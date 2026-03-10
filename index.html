@@ -260,6 +260,12 @@
             color: #f6ad55;
         }
 
+        .locked-money {
+            color: #9f7aea;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
         .initial-value {
             color: #7f8c8d;
             font-size: 0.9em;
@@ -619,41 +625,48 @@
             }, duration);
         }
 
-        // Calculate current money for a player
-        function calculateCurrentMoney(player) {
+        // Calculate available money (cash on hand - not locked)
+        function calculateAvailableMoney(player) {
+            // Start with initial money
+            let available = player.initialMoney;
+            
+            // Add all deposits, subtract all withdrawals
+            player.transactions.forEach(t => {
+                if (t.type === 'money_deposit') {
+                    available += t.amount;
+                } else if (t.type === 'money_withdrawal') {
+                    available -= t.amount;
+                }
+                // Time deposit transactions don't affect available money directly
+                // They are just records - the actual money movement happens when creating/claiming
+            });
+
+            return Math.round(available * 100) / 100;
+        }
+
+        // Calculate total money (available + locked in deposits)
+        function calculateTotalMoney(player) {
             let total = player.initialMoney;
             
-            // Add regular transactions
+            // Add all deposits, subtract all withdrawals
             player.transactions.forEach(t => {
                 if (t.type === 'money_deposit') {
                     total += t.amount;
                 } else if (t.type === 'money_withdrawal') {
                     total -= t.amount;
                 }
+                // Time deposit transactions don't double-count money
             });
-
-            // Add active time deposit (not claimed yet)
-            if (player.activeDeposit && !player.activeDeposit.claimed) {
-                // Don't count locked money in available balance
-                total -= player.activeDeposit.amount;
-            }
 
             return Math.round(total * 100) / 100;
         }
 
-        // Calculate available money (excluding locked deposits)
-        function calculateAvailableMoney(player) {
-            let total = player.initialMoney;
-            
-            player.transactions.forEach(t => {
-                if (t.type === 'money_deposit') {
-                    total += t.amount;
-                } else if (t.type === 'money_withdrawal') {
-                    total -= t.amount;
-                }
-            });
-
-            return Math.round(total * 100) / 100;
+        // Calculate locked money
+        function calculateLockedMoney(player) {
+            if (player.activeDeposit && !player.activeDeposit.claimed) {
+                return player.activeDeposit.amount;
+            }
+            return 0;
         }
 
         // Calculate current happiness for a player
@@ -685,11 +698,11 @@
             let highestMoney = -Infinity;
 
             players.forEach(player => {
-                const currentMoney = calculateCurrentMoney(player);
+                const totalMoney = calculateTotalMoney(player);
                 const currentHappiness = calculateCurrentHappiness(player);
                 
-                if (currentHappiness >= 1 && currentMoney > highestMoney) {
-                    highestMoney = currentMoney;
+                if (currentHappiness >= 1 && totalMoney > highestMoney) {
+                    highestMoney = totalMoney;
                     champion = player;
                 }
             });
@@ -712,7 +725,7 @@
                 return;
             }
 
-            const currentMoney = calculateCurrentMoney(champion);
+            const totalMoney = calculateTotalMoney(champion);
             const currentHappiness = calculateCurrentHappiness(champion);
 
             championContainer.innerHTML = `
@@ -720,7 +733,7 @@
                     <div class="champion-title">🏆 ULTIMATE CHAMPION 🏆</div>
                     <div class="champion-name">${escapeHtml(champion.name)}</div>
                     <div class="champion-stats">
-                        <span>💰 $${currentMoney.toFixed(2)}</span>
+                        <span>💰 $${totalMoney.toFixed(2)}</span>
                         <span>😆 ${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</span>
                     </div>
                     <div style="margin-top: 15px; font-size: 0.9em; opacity: 0.9;">
@@ -732,10 +745,10 @@
 
         // Check for winner condition ($100k and at least 1 happiness)
         function checkForWinner(player) {
-            const currentMoney = calculateCurrentMoney(player);
+            const totalMoney = calculateTotalMoney(player);
             const currentHappiness = calculateCurrentHappiness(player);
             
-            if (currentMoney >= 100000 && currentHappiness >= 1) {
+            if (totalMoney >= 100000 && currentHappiness >= 1) {
                 if (!winnerNotified[player.id]) {
                     winnerNotified[player.id] = true;
                     saveToStorage();
@@ -800,12 +813,13 @@
                 card.classList.add('has-deposit');
             }
 
-            const currentMoney = calculateCurrentMoney(player);
             const availableMoney = calculateAvailableMoney(player);
+            const totalMoney = calculateTotalMoney(player);
+            const lockedMoney = calculateLockedMoney(player);
             const currentHappiness = calculateCurrentHappiness(player);
 
             // Check if this player is a winner
-            const isWinner = currentMoney >= 100000 && currentHappiness >= 1;
+            const isWinner = totalMoney >= 100000 && currentHappiness >= 1;
             
             // Build transactions HTML
             let transactionsHtml = '';
@@ -834,7 +848,7 @@
                 } else if (t.type === 'time_deposit') {
                     transactionClass = 'deposit';
                     icon = '⏰ 🔒';
-                    text = `$${t.amount.toFixed(2)} (${t.period})`;
+                    text = `$${t.amount.toFixed(2)} locked (${t.period})`;
                 } else if (t.type === 'interest_earned') {
                     transactionClass = 'interest';
                     icon = '⏰ ✨';
@@ -863,9 +877,9 @@
                         <div class="time-deposit-title">⏰ Time Deposit (${interestRate})</div>
                         <div class="active-deposit">
                             <div class="deposit-details">
-                                <span class="deposit-amount">🔒 $${player.activeDeposit.amount.toFixed(2)}</span>
+                                <span class="deposit-amount">🔒 $${player.activeDeposit.amount.toFixed(2)} Locked</span>
                                 <span class="deposit-time">${player.activeDeposit.period === '1week' ? '1 Week' : '1 Month'}</span>
-                                <span class="deposit-interest">✨ Interest: $${interestAmount.toFixed(2)}</span>
+                                <span class="deposit-interest">✨ Will earn: $${interestAmount.toFixed(2)}</span>
                             </div>
                             <div class="deposit-status ${isMatured ? 'status-matured' : 'status-pending'}">
                                 ${isMatured ? '✅ MATURED - Ready to claim!' : '⏳ PENDING - Not yet matured'}
@@ -915,8 +929,8 @@
                 <div class="stats-display">
                     <div class="money-display">
                         <div class="current-money">$${availableMoney.toFixed(2)}</div>
-                        <div class="initial-value">Available: $${availableMoney.toFixed(2)}</div>
-                        <div class="initial-value">Total: $${(availableMoney + (player.activeDeposit?.amount || 0)).toFixed(2)}</div>
+                        <div class="locked-money">🔒 Locked: $${lockedMoney.toFixed(2)}</div>
+                        <div class="initial-value">Total Net Worth: $${totalMoney.toFixed(2)}</div>
                     </div>
                     <div class="happiness-display">
                         <div class="current-happiness">${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</div>
@@ -1039,6 +1053,7 @@
                 }
             }
 
+            // Add transaction - this directly affects available money
             players[playerIndex].transactions.push({
                 type: `money_${type}`,
                 amount: amount,
@@ -1117,14 +1132,23 @@
                 return;
             }
 
+            // STEP 1: Record the time deposit
             player.activeDeposit = {
                 amount: amount,
                 period: period,
-                matured: false, // Start as not matured
+                matured: false,
                 claimed: false,
                 createdAt: new Date().toISOString()
             };
 
+            // STEP 2: Add a withdrawal transaction to remove the money from available
+            player.transactions.push({
+                type: 'money_withdrawal',
+                amount: amount,
+                timestamp: new Date().toISOString()
+            });
+
+            // STEP 3: Add a record of the time deposit
             player.transactions.push({
                 type: 'time_deposit',
                 amount: amount,
@@ -1159,24 +1183,22 @@
             const interestAmount = calculateInterest(deposit.amount, deposit.period);
             const totalAmount = deposit.amount + interestAmount;
 
-            // Mark as claimed
-            player.activeDeposit.claimed = true;
-
-            // Add money back with interest
+            // STEP 1: Add money back with interest (deposit)
             player.transactions.push({
                 type: 'money_deposit',
                 amount: totalAmount,
                 timestamp: new Date().toISOString()
             });
 
-            // Add interest transaction
+            // STEP 2: Add interest transaction record
             player.transactions.push({
                 type: 'interest_earned',
                 amount: interestAmount,
                 timestamp: new Date().toISOString()
             });
 
-            // Clear active deposit
+            // STEP 3: Mark as claimed and clear deposit
+            player.activeDeposit.claimed = true;
             player.activeDeposit = null;
 
             saveToStorage();
