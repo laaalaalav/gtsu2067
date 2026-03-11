@@ -404,7 +404,7 @@
             border-color: #6b46c1;
         }
 
-        .money-inputs, .happiness-buttons {
+        .money-inputs {
             display: flex;
             gap: 10px;
             margin: 15px 0;
@@ -425,7 +425,21 @@
             border-color: #48bb78;
         }
 
+        .money-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .money-buttons button {
+            flex: 1;
+            padding: 10px;
+        }
+
         .happiness-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
             justify-content: center;
         }
 
@@ -514,15 +528,6 @@
             border-radius: 50px;
         }
 
-        .no-champion {
-            background: #cbd5e0;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 20px;
-            text-align: center;
-            color: #4a5568;
-        }
-
         .winner-announcement {
             background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
             color: white;
@@ -569,7 +574,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>BOBA BANK</h1></h1>
+        <h1>Boba Bank</h1>
 
         <div id="notificationArea"></div>
 
@@ -577,8 +582,8 @@
             <h2>Add New Player</h2>
             <div class="input-group">
                 <input type="text" id="playerName" placeholder="Enter player name" maxlength="50">
-                <input type="number" id="initialMoney" placeholder="Initial money" value="0" min="0" step="0.01">
-                <input type="number" id="initialHappiness" placeholder="Initial 😆" value="1" min="0" step="1">
+                <input type="number" id="initialMoney" placeholder="Initial money" step="0.01">
+                <input type="number" id="initialHappiness" placeholder="Initial 😆" step="1">
                 <button onclick="addPlayer()">Add Player</button>
             </div>
         </div>
@@ -637,8 +642,6 @@
                 } else if (t.type === 'money_withdrawal') {
                     available -= t.amount;
                 }
-                // Time deposit transactions don't affect available money directly
-                // They are just records - the actual money movement happens when creating/claiming
             });
 
             return Math.round(available * 100) / 100;
@@ -655,7 +658,6 @@
                 } else if (t.type === 'money_withdrawal') {
                     total -= t.amount;
                 }
-                // Time deposit transactions don't double-count money
             });
 
             return Math.round(total * 100) / 100;
@@ -716,12 +718,7 @@
             const champion = findChampion();
 
             if (!champion) {
-                championContainer.innerHTML = `
-                    <div class="no-champion">
-                        😢 No player meets the champion requirements yet.<br>
-                        <small>Need at least 1 😆 to be eligible for champion status</small>
-                    </div>
-                `;
+                championContainer.innerHTML = '';
                 return;
             }
 
@@ -735,9 +732,6 @@
                     <div class="champion-stats">
                         <span>💰 $${totalMoney.toFixed(2)}</span>
                         <span>😆 ${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</span>
-                    </div>
-                    <div style="margin-top: 15px; font-size: 0.9em; opacity: 0.9;">
-                        Richest player with at least 1 happiness!
                     </div>
                 </div>
             `;
@@ -899,7 +893,7 @@
                     <div class="time-deposit-section">
                         <div class="time-deposit-title">⏰ Start Time Deposit</div>
                         <div class="deposit-inputs">
-                            <input type="number" id="deposit-amount-${index}" placeholder="Enter amount to lock" step="0.01" min="1" value="100">
+                            <input type="number" id="deposit-amount-${index}" placeholder="Enter amount" step="0.01" min="1">
                         </div>
                         <div class="deposit-options">
                             <button class="deposit-option-btn selected" id="week-btn-${index}" onclick="selectDepositPeriod(${index}, '1week')">1 Week (0.5%)</button>
@@ -941,9 +935,9 @@
                 ${timeDepositHtml}
                 
                 <div class="money-inputs">
-                    <input type="number" id="money-amount-${index}" placeholder="Amount" step="0.01" min="0" value="10">
+                    <input type="number" id="money-amount-${index}" placeholder="Enter amount" step="0.01" min="0">
                 </div>
-                <div style="display: flex; gap: 10px; margin: 10px 0;">
+                <div class="money-buttons">
                     <button class="money-btn" onclick="addMoneyTransaction(${index}, 'deposit')">💰 Add Money</button>
                     <button class="money-btn" onclick="addMoneyTransaction(${index}, 'withdrawal')">💰 Take Money</button>
                 </div>
@@ -982,8 +976,8 @@
             const moneyInput = document.getElementById('initialMoney');
             const happinessInput = document.getElementById('initialHappiness');
             const name = nameInput.value.trim();
-            const initialMoney = parseFloat(moneyInput.value) || 0;
-            const initialHappiness = parseInt(happinessInput.value) || 1;
+            const initialMoney = moneyInput.value === '' ? 0 : parseFloat(moneyInput.value);
+            const initialHappiness = happinessInput.value === '' ? 0 : parseInt(happinessInput.value);
 
             if (!name) {
                 alert('Please enter a player name');
@@ -1005,10 +999,15 @@
             renderPlayers();
             
             nameInput.value = '';
-            moneyInput.value = '0';
-            happinessInput.value = '1';
+            moneyInput.value = '';
+            happinessInput.value = '';
             
             showNotification(`✨ Player "${name}" added!`, 2000);
+        }
+
+        // Generate unique ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
         }
 
         // Select deposit period
@@ -1048,7 +1047,7 @@
                 }
             }
 
-            // Add transaction - this directly affects available money
+            // Add transaction
             players[playerIndex].transactions.push({
                 type: `money_${type}`,
                 amount: amount,
@@ -1057,6 +1056,7 @@
 
             saveToStorage();
             renderPlayers();
+            amountInput.value = '';
         }
 
         // Add happiness change
@@ -1152,6 +1152,7 @@
 
             saveToStorage();
             renderPlayers();
+            amountInput.value = '';
             
             const periodName = period === '1week' ? '1 week' : '1 month';
             const rate = period === '1week' ? '0.5%' : '2.5%';
