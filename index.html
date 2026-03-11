@@ -583,7 +583,7 @@
             <div class="input-group">
                 <input type="text" id="playerName" placeholder="Enter player name" maxlength="50">
                 <input type="number" id="initialMoney" placeholder="Initial money" step="0.01">
-                <input type="number" id="initialHappiness" placeholder="Initial 😆" step="1">
+                <input type="number" id="initialHappiness" placeholder="Initial 😆" value="1" step="1">
                 <button onclick="addPlayer()">Add Player</button>
             </div>
         </div>
@@ -977,7 +977,7 @@
             const happinessInput = document.getElementById('initialHappiness');
             const name = nameInput.value.trim();
             const initialMoney = moneyInput.value === '' ? 0 : parseFloat(moneyInput.value);
-            const initialHappiness = happinessInput.value === '' ? 0 : parseInt(happinessInput.value);
+            const initialHappiness = happinessInput.value === '' ? 1 : parseInt(happinessInput.value);
 
             if (!name) {
                 alert('Please enter a player name');
@@ -1000,7 +1000,7 @@
             
             nameInput.value = '';
             moneyInput.value = '';
-            happinessInput.value = '';
+            happinessInput.value = '1';
             
             showNotification(`✨ Player "${name}" added!`, 2000);
         }
