@@ -1011,11 +1011,6 @@
             showNotification(`✨ Player "${name}" added!`, 2000);
         }
 
-        // Generate unique ID
-        function generateId() {
-            return Date.now().toString(36) + Math.random().toString(36).substr(2);
-        }
-
         // Select deposit period
         function selectDepositPeriod(playerIndex, period) {
             const weekBtn = document.getElementById(`week-btn-${playerIndex}`);
@@ -1062,7 +1057,6 @@
 
             saveToStorage();
             renderPlayers();
-            amountInput.value = '10';
         }
 
         // Add happiness change
@@ -1158,7 +1152,6 @@
 
             saveToStorage();
             renderPlayers();
-            amountInput.value = '100';
             
             const periodName = period === '1week' ? '1 week' : '1 month';
             const rate = period === '1week' ? '0.5%' : '2.5%';
