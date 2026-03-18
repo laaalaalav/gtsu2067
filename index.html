@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Player Money & Happiness Tracker</title>
+    <title>BOBA BANK</title>
     <style>
         * {
             margin: 0;
@@ -27,8 +27,9 @@
             text-align: center;
             color: white;
             margin-bottom: 30px;
-            font-size: 2.5em;
+            font-size: 3em;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 2px;
         }
 
         .add-player-section {
@@ -143,16 +144,6 @@
             background: #f59e0b;
         }
 
-        button.check-btn {
-            background: #4299e1;
-            padding: 8px 16px;
-            font-size: 14px;
-        }
-
-        button.check-btn:hover {
-            background: #3182ce;
-        }
-
         .players-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
@@ -207,23 +198,16 @@
         }
 
         .player-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             margin-bottom: 15px;
             padding-bottom: 10px;
             border-bottom: 2px solid #f0f0f0;
         }
 
         .player-name {
-            font-size: 1.3em;
+            font-size: 1.5em;
             font-weight: bold;
             color: #333;
-        }
-
-        .player-id {
-            color: #999;
-            font-size: 0.8em;
+            text-align: center;
         }
 
         .stats-display {
@@ -264,6 +248,15 @@
             color: #9f7aea;
             font-size: 0.9em;
             margin-top: 5px;
+        }
+
+        .net-worth {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #cbd5e0;
         }
 
         .initial-value {
@@ -325,14 +318,6 @@
             border-radius: 5px;
             font-weight: bold;
             margin: 10px 0;
-        }
-
-        .status-matured {
-            background: #c6f6d5;
-            color: #22543d;
-        }
-
-        .status-pending {
             background: #fed7d7;
             color: #742a2a;
         }
@@ -574,7 +559,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Boba Bank</h1>
+        <h1>🧋 BOBA BANK</h1>
 
         <div id="notificationArea"></div>
 
@@ -630,37 +615,65 @@
             }, duration);
         }
 
-        // Calculate available money (cash on hand - not locked)
-        function calculateAvailableMoney(player) {
+        // Calculate net worth (cash + locked deposits)
+        function calculateNetWorth(player) {
             // Start with initial money
-            let available = player.initialMoney;
+            let netWorth = player.initialMoney;
             
-            // Add all deposits, subtract all withdrawals
+            // Add all deposits, subtract all withdrawals that are NOT time deposit related
+            // Time deposits are just moving money, not changing net worth
             player.transactions.forEach(t => {
                 if (t.type === 'money_deposit') {
-                    available += t.amount;
+                    netWorth += t.amount;
                 } else if (t.type === 'money_withdrawal') {
-                    available -= t.amount;
+                    // Only subtract if it's a regular withdrawal, not a time deposit
+                    // We need to check if this withdrawal is part of a time deposit
+                    // For simplicity, we'll just check if there's a matching time deposit record
+                    // But in this version, we'll handle it differently
+                    netWorth -= t.amount;
                 }
             });
 
-            return Math.round(available * 100) / 100;
+            // Add back locked money? No - locked money is already in transactions
+            // The issue is that time deposit creates a withdrawal that we don't want to count
+            
+            return Math.round(netWorth * 100) / 100;
         }
 
-        // Calculate total money (available + locked in deposits)
-        function calculateTotalMoney(player) {
-            let total = player.initialMoney;
+        // Calculate net worth correctly (cash + locked)
+        function calculateCorrectNetWorth(player) {
+            // Cash is from transactions
+            let cash = player.initialMoney;
             
             // Add all deposits, subtract all withdrawals
             player.transactions.forEach(t => {
                 if (t.type === 'money_deposit') {
-                    total += t.amount;
+                    cash += t.amount;
                 } else if (t.type === 'money_withdrawal') {
-                    total -= t.amount;
+                    cash -= t.amount;
+                }
+            });
+            
+            // Add locked money
+            const locked = player.activeDeposit && !player.activeDeposit.claimed ? player.activeDeposit.amount : 0;
+            
+            return Math.round((cash + locked) * 100) / 100;
+        }
+
+        // Calculate cash (available money)
+        function calculateCash(player) {
+            let cash = player.initialMoney;
+            
+            // Add all deposits, subtract all withdrawals
+            player.transactions.forEach(t => {
+                if (t.type === 'money_deposit') {
+                    cash += t.amount;
+                } else if (t.type === 'money_withdrawal') {
+                    cash -= t.amount;
                 }
             });
 
-            return Math.round(total * 100) / 100;
+            return Math.round(cash * 100) / 100;
         }
 
         // Calculate locked money
@@ -700,11 +713,11 @@
             let highestMoney = -Infinity;
 
             players.forEach(player => {
-                const totalMoney = calculateTotalMoney(player);
+                const netWorth = calculateCorrectNetWorth(player);
                 const currentHappiness = calculateCurrentHappiness(player);
                 
-                if (currentHappiness >= 1 && totalMoney > highestMoney) {
-                    highestMoney = totalMoney;
+                if (currentHappiness >= 1 && netWorth > highestMoney) {
+                    highestMoney = netWorth;
                     champion = player;
                 }
             });
@@ -722,15 +735,15 @@
                 return;
             }
 
-            const totalMoney = calculateTotalMoney(champion);
+            const netWorth = calculateCorrectNetWorth(champion);
             const currentHappiness = calculateCurrentHappiness(champion);
 
             championContainer.innerHTML = `
                 <div class="champion-section">
-                    <div class="champion-title">🏆 ULTIMATE CHAMPION 🏆</div>
+                    <div class="champion-title">🏆 TOP PLAYER 🏆</div>
                     <div class="champion-name">${escapeHtml(champion.name)}</div>
                     <div class="champion-stats">
-                        <span>💰 $${totalMoney.toFixed(2)}</span>
+                        <span>💰 $${netWorth.toFixed(2)}</span>
                         <span>😆 ${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</span>
                     </div>
                 </div>
@@ -739,10 +752,10 @@
 
         // Check for winner condition ($100k and at least 1 happiness)
         function checkForWinner(player) {
-            const totalMoney = calculateTotalMoney(player);
+            const netWorth = calculateCorrectNetWorth(player);
             const currentHappiness = calculateCurrentHappiness(player);
             
-            if (totalMoney >= 100000 && currentHappiness >= 1) {
+            if (netWorth >= 100000 && currentHappiness >= 1) {
                 if (!winnerNotified[player.id]) {
                     winnerNotified[player.id] = true;
                     saveToStorage();
@@ -807,13 +820,13 @@
                 card.classList.add('has-deposit');
             }
 
-            const availableMoney = calculateAvailableMoney(player);
-            const totalMoney = calculateTotalMoney(player);
+            const cash = calculateCash(player);
+            const netWorth = calculateCorrectNetWorth(player);
             const lockedMoney = calculateLockedMoney(player);
             const currentHappiness = calculateCurrentHappiness(player);
 
             // Check if this player is a winner
-            const isWinner = totalMoney >= 100000 && currentHappiness >= 1;
+            const isWinner = netWorth >= 100000 && currentHappiness >= 1;
             
             // Build transactions HTML
             let transactionsHtml = '';
@@ -864,7 +877,6 @@
             if (player.activeDeposit && !player.activeDeposit.claimed) {
                 const interestAmount = calculateInterest(player.activeDeposit.amount, player.activeDeposit.period);
                 const interestRate = player.activeDeposit.period === '1week' ? '0.5%' : '2.5%';
-                const isMatured = player.activeDeposit.matured || false;
                 
                 timeDepositHtml = `
                     <div class="time-deposit-section">
@@ -875,15 +887,11 @@
                                 <span class="deposit-time">${player.activeDeposit.period === '1week' ? '1 Week' : '1 Month'}</span>
                                 <span class="deposit-interest">✨ Will earn: $${interestAmount.toFixed(2)}</span>
                             </div>
-                            <div class="deposit-status ${isMatured ? 'status-matured' : 'status-pending'}">
-                                ${isMatured ? '✅ MATURED - Ready to claim!' : '⏳ PENDING - Not yet matured'}
+                            <div class="deposit-status">
+                                ⏳ PENDING - Not yet matured
                             </div>
                             <div class="deposit-actions">
-                                <button class="check-btn" onclick="toggleMaturity(${index})">🔍 Check Maturity</button>
-                                ${isMatured ? 
-                                    `<button class="claim-btn" onclick="claimTimeDeposit(${index})">💰 Claim $${(player.activeDeposit.amount + interestAmount).toFixed(2)}</button>` : 
-                                    `<button class="claim-btn" disabled style="opacity: 0.5; cursor: not-allowed;">💰 Cannot Claim Yet</button>`
-                                }
+                                <button class="claim-btn" onclick="claimTimeDeposit(${index})">💰 Claim $${(player.activeDeposit.amount + interestAmount).toFixed(2)}</button>
                             </div>
                         </div>
                     </div>
@@ -907,7 +915,7 @@
 
             // Add leader badge if this player is the champion
             const leaderBadge = (champion && champion.id === player.id) ? 
-                '<div class="leader-badge">🏆 CHAMPION 🏆</div>' : '';
+                '<div class="leader-badge">🏆 TOP PLAYER 🏆</div>' : '';
 
             // Add deposit badge if player has active deposit
             const depositBadge = (player.activeDeposit && !player.activeDeposit.claimed) ? 
@@ -917,14 +925,13 @@
                 ${leaderBadge}
                 ${depositBadge}
                 <div class="player-header">
-                    <span class="player-name">${escapeHtml(player.name)} ${isWinner ? '🏆' : ''}</span>
-                    <span class="player-id">ID: ${player.id.substring(0, 8)}</span>
+                    <div class="player-name">${escapeHtml(player.name)} ${isWinner ? '🏆' : ''}</div>
                 </div>
                 <div class="stats-display">
                     <div class="money-display">
-                        <div class="current-money">$${availableMoney.toFixed(2)}</div>
+                        <div class="current-money">$${cash.toFixed(2)}</div>
                         <div class="locked-money">🔒 Locked: $${lockedMoney.toFixed(2)}</div>
-                        <div class="initial-value">Total Net Worth: $${totalMoney.toFixed(2)}</div>
+                        <div class="net-worth">💰 Net Worth: $${netWorth.toFixed(2)}</div>
                     </div>
                     <div class="happiness-display">
                         <div class="current-happiness">${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</div>
@@ -1038,16 +1045,16 @@
             }
 
             const player = players[playerIndex];
-            const availableMoney = calculateAvailableMoney(player);
+            const cash = calculateCash(player);
 
-            // Check if withdrawal would make money negative
-            if (type === 'withdrawal' && availableMoney - amount < 0) {
-                if (!confirm('Warning: This withdrawal would make the available money negative. Continue anyway?')) {
+            // Check if withdrawal would make cash negative
+            if (type === 'withdrawal' && cash - amount < 0) {
+                if (!confirm('Warning: This withdrawal would make cash negative. Continue anyway?')) {
                     return;
                 }
             }
 
-            // Add transaction
+            // Add transaction - this affects net worth
             players[playerIndex].transactions.push({
                 type: `money_${type}`,
                 amount: amount,
@@ -1079,28 +1086,6 @@
             renderPlayers();
         }
 
-        // Toggle maturity status (for game purposes)
-        function toggleMaturity(playerIndex) {
-            const player = players[playerIndex];
-            
-            if (!player.activeDeposit || player.activeDeposit.claimed) {
-                alert('No active time deposit');
-                return;
-            }
-
-            // Toggle the matured status
-            player.activeDeposit.matured = !player.activeDeposit.matured;
-            
-            saveToStorage();
-            renderPlayers();
-            
-            if (player.activeDeposit.matured) {
-                showNotification(`✅ Deposit matured! You can now claim it.`, 2000);
-            } else {
-                showNotification(`⏳ Deposit is now pending...`, 2000);
-            }
-        }
-
         // Create time deposit
         function createTimeDeposit(playerIndex) {
             const amountInput = document.getElementById(`deposit-amount-${playerIndex}`);
@@ -1114,10 +1099,10 @@
             }
 
             const player = players[playerIndex];
-            const availableMoney = calculateAvailableMoney(player);
+            const cash = calculateCash(player);
 
-            if (amount > availableMoney) {
-                alert(`Insufficient funds! Available: $${availableMoney.toFixed(2)}`);
+            if (amount > cash) {
+                alert(`Insufficient cash! Available cash: $${cash.toFixed(2)}`);
                 return;
             }
 
@@ -1130,12 +1115,12 @@
             player.activeDeposit = {
                 amount: amount,
                 period: period,
-                matured: false,
                 claimed: false,
                 createdAt: new Date().toISOString()
             };
 
-            // STEP 2: Add a withdrawal transaction to remove the money from available
+            // STEP 2: Add a withdrawal transaction to move money from cash to locked
+            // This decreases cash but net worth stays the same
             player.transactions.push({
                 type: 'money_withdrawal',
                 amount: amount,
@@ -1168,16 +1153,11 @@
                 return;
             }
 
-            if (!player.activeDeposit.matured) {
-                alert('Deposit has not matured yet! Click "Check Maturity" to mature it.');
-                return;
-            }
-
             const deposit = player.activeDeposit;
             const interestAmount = calculateInterest(deposit.amount, deposit.period);
             const totalAmount = deposit.amount + interestAmount;
 
-            // STEP 1: Add money back with interest (deposit)
+            // STEP 1: Add money back with interest (deposit) - increases cash AND net worth (by interest amount)
             player.transactions.push({
                 type: 'money_deposit',
                 amount: totalAmount,
