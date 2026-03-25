@@ -232,31 +232,57 @@
             background: linear-gradient(135deg, #fff5e6 0%, #ffe4cc 100%);
         }
 
-        .current-money {
-            font-size: 2em;
+        .net-worth-label {
+            font-size: 1em;
             font-weight: bold;
             color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .net-worth-amount {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .separator {
+            margin: 12px 0;
+            border-top: 3px solid #cbd5e0;
+        }
+
+        .cash-info {
+            margin: 8px 0;
+        }
+
+        .cash-amount {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .cash-label {
+            font-size: 0.7em;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-left: 5px;
+        }
+
+        .locked-info {
+            margin-top: 8px;
+            font-size: 0.9em;
+        }
+
+        .locked-amount {
+            font-weight: bold;
+            color: #9f7aea;
         }
 
         .current-happiness {
             font-size: 2.5em;
             font-weight: bold;
             color: #f6ad55;
-        }
-
-        .locked-money {
-            color: #9f7aea;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-
-        .net-worth {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px dashed #cbd5e0;
         }
 
         .initial-value {
@@ -359,34 +385,6 @@
         .deposit-inputs input:focus {
             outline: none;
             border-color: #9f7aea;
-        }
-
-        .deposit-options {
-            display: flex;
-            gap: 10px;
-            margin: 10px 0;
-        }
-
-        .deposit-option-btn {
-            flex: 1;
-            background: #e9d8fd;
-            color: #6b46c1;
-            border: 2px solid #9f7aea;
-            padding: 10px;
-            font-size: 14px;
-            font-weight: bold;
-            transition: none;
-        }
-
-        .deposit-option-btn:hover {
-            background: #9f7aea;
-            color: white;
-        }
-
-        .deposit-option-btn.selected {
-            background: #9f7aea;
-            color: white;
-            border-color: #6b46c1;
         }
 
         .money-inputs {
@@ -568,7 +566,7 @@
             <div class="input-group">
                 <input type="text" id="playerName" placeholder="Enter player name" maxlength="50">
                 <input type="number" id="initialMoney" placeholder="Initial money" step="0.01">
-                <input type="number" id="initialHappiness" placeholder="Initial 😆" value="1" step="1">
+                <input type="number" id="initialHappiness" placeholder="Initial 😆" value="0" step="1">
                 <button onclick="addPlayer()">Add Player</button>
             </div>
         </div>
@@ -579,7 +577,7 @@
         <div id="winnerAnnouncement" class="winner-announcement" style="display: none;">
             🎉 WINNER! 🎉
             <div id="winnerMessage"></div>
-            <small>Reached $100k with at least 1 😆</small>
+            <small>Reached $100k with at least 3 😆</small>
         </div>
 
         <button class="reset-btn" onclick="resetAllData()">Reset All Data</button>
@@ -590,11 +588,8 @@
         let players = JSON.parse(localStorage.getItem('players-happiness-tracker')) || [];
         let winnerNotified = JSON.parse(localStorage.getItem('winner-notified')) || {};
 
-        // Interest rates
-        const interestRates = {
-            '1week': 0.005, // 0.5% for 1 week
-            '1month': 0.025 // 2.5% for 1 month
-        };
+        // Interest rate for 1 month only
+        const interestRate = 0.03; // 3% for 1 month
 
         // Save data to localStorage
         function saveToStorage() {
@@ -616,31 +611,6 @@
         }
 
         // Calculate net worth (cash + locked deposits)
-        function calculateNetWorth(player) {
-            // Start with initial money
-            let netWorth = player.initialMoney;
-            
-            // Add all deposits, subtract all withdrawals that are NOT time deposit related
-            // Time deposits are just moving money, not changing net worth
-            player.transactions.forEach(t => {
-                if (t.type === 'money_deposit') {
-                    netWorth += t.amount;
-                } else if (t.type === 'money_withdrawal') {
-                    // Only subtract if it's a regular withdrawal, not a time deposit
-                    // We need to check if this withdrawal is part of a time deposit
-                    // For simplicity, we'll just check if there's a matching time deposit record
-                    // But in this version, we'll handle it differently
-                    netWorth -= t.amount;
-                }
-            });
-
-            // Add back locked money? No - locked money is already in transactions
-            // The issue is that time deposit creates a withdrawal that we don't want to count
-            
-            return Math.round(netWorth * 100) / 100;
-        }
-
-        // Calculate net worth correctly (cash + locked)
         function calculateCorrectNetWorth(player) {
             // Cash is from transactions
             let cash = player.initialMoney;
@@ -698,9 +668,8 @@
         }
 
         // Calculate interest amount
-        function calculateInterest(amount, period) {
-            const rate = interestRates[period] || 0;
-            return Math.round(amount * rate * 100) / 100;
+        function calculateInterest(amount) {
+            return Math.round(amount * interestRate * 100) / 100;
         }
 
         // Find the champion (richest player with at least 1 happiness)
@@ -750,12 +719,12 @@
             `;
         }
 
-        // Check for winner condition ($100k and at least 1 happiness)
+        // Check for winner condition ($100k and at least 3 happiness)
         function checkForWinner(player) {
             const netWorth = calculateCorrectNetWorth(player);
             const currentHappiness = calculateCurrentHappiness(player);
             
-            if (netWorth >= 100000 && currentHappiness >= 1) {
+            if (netWorth >= 100000 && currentHappiness >= 3) {
                 if (!winnerNotified[player.id]) {
                     winnerNotified[player.id] = true;
                     saveToStorage();
@@ -765,7 +734,7 @@
                     winnerDiv.style.display = 'block';
                     winnerMessage.innerHTML = `${player.name} has reached $100k with ${currentHappiness} 😆!`;
                     
-                    showNotification(`🎉 ${player.name} WON! $100k + 😆`, 4000);
+                    showNotification(`🎉 ${player.name} WON! $100k + 3 😆`, 4000);
                     
                     return true;
                 }
@@ -826,7 +795,7 @@
             const currentHappiness = calculateCurrentHappiness(player);
 
             // Check if this player is a winner
-            const isWinner = netWorth >= 100000 && currentHappiness >= 1;
+            const isWinner = netWorth >= 100000 && currentHappiness >= 3;
             
             // Build transactions HTML
             let transactionsHtml = '';
@@ -855,7 +824,7 @@
                 } else if (t.type === 'time_deposit') {
                     transactionClass = 'deposit';
                     icon = '⏰ 🔒';
-                    text = `$${t.amount.toFixed(2)} locked (${t.period})`;
+                    text = `$${t.amount.toFixed(2)} locked (1 Month)`;
                 } else if (t.type === 'interest_earned') {
                     transactionClass = 'interest';
                     icon = '⏰ ✨';
@@ -875,16 +844,15 @@
             let timeDepositHtml = '';
             
             if (player.activeDeposit && !player.activeDeposit.claimed) {
-                const interestAmount = calculateInterest(player.activeDeposit.amount, player.activeDeposit.period);
-                const interestRate = player.activeDeposit.period === '1week' ? '0.5%' : '2.5%';
+                const interestAmount = calculateInterest(player.activeDeposit.amount);
                 
                 timeDepositHtml = `
                     <div class="time-deposit-section">
-                        <div class="time-deposit-title">⏰ Time Deposit (${interestRate})</div>
+                        <div class="time-deposit-title">⏰ Time Deposit (2.5%)</div>
                         <div class="active-deposit">
                             <div class="deposit-details">
                                 <span class="deposit-amount">🔒 $${player.activeDeposit.amount.toFixed(2)} Locked</span>
-                                <span class="deposit-time">${player.activeDeposit.period === '1week' ? '1 Week' : '1 Month'}</span>
+                                <span class="deposit-time">1 Month</span>
                                 <span class="deposit-interest">✨ Will earn: $${interestAmount.toFixed(2)}</span>
                             </div>
                             <div class="deposit-status">
@@ -899,16 +867,11 @@
             } else {
                 timeDepositHtml = `
                     <div class="time-deposit-section">
-                        <div class="time-deposit-title">⏰ Start Time Deposit</div>
+                        <div class="time-deposit-title">⏰ Start Time Deposit (2.5%)</div>
                         <div class="deposit-inputs">
                             <input type="number" id="deposit-amount-${index}" placeholder="Enter amount" step="0.01" min="1">
                         </div>
-                        <div class="deposit-options">
-                            <button class="deposit-option-btn selected" id="week-btn-${index}" onclick="selectDepositPeriod(${index}, '1week')">1 Week (0.5%)</button>
-                            <button class="deposit-option-btn" id="month-btn-${index}" onclick="selectDepositPeriod(${index}, '1month')">1 Month (2.5%)</button>
-                        </div>
-                        <input type="hidden" id="deposit-period-${index}" value="1week">
-                        <button class="time-deposit-btn" onclick="createTimeDeposit(${index})" style="width: 100%; margin-top: 10px;">🔒 Lock Money in Time Deposit</button>
+                        <button class="time-deposit-btn" onclick="createTimeDeposit(${index})" style="width: 100%; margin-top: 10px;">🔒 Lock Money for 1 Month</button>
                     </div>
                 `;
             }
@@ -929,9 +892,14 @@
                 </div>
                 <div class="stats-display">
                     <div class="money-display">
-                        <div class="current-money">$${cash.toFixed(2)}</div>
-                        <div class="locked-money">🔒 Locked: $${lockedMoney.toFixed(2)}</div>
-                        <div class="net-worth">💰 Net Worth: $${netWorth.toFixed(2)}</div>
+                        <div class="net-worth-label">💰 Net Worth:</div>
+                        <div class="net-worth-amount">$${netWorth.toFixed(2)}</div>
+                        <div class="separator"></div>
+                        <div class="cash-info">
+                            <span class="cash-amount">$${cash.toFixed(2)}</span>
+                            <span class="cash-label">cash</span>
+                        </div>
+                        <div class="locked-info">🔒 Locked: <span class="locked-amount">$${lockedMoney.toFixed(2)}</span></div>
                     </div>
                     <div class="happiness-display">
                         <div class="current-happiness">${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</div>
@@ -984,7 +952,7 @@
             const happinessInput = document.getElementById('initialHappiness');
             const name = nameInput.value.trim();
             const initialMoney = moneyInput.value === '' ? 0 : parseFloat(moneyInput.value);
-            const initialHappiness = happinessInput.value === '' ? 1 : parseInt(happinessInput.value);
+            const initialHappiness = happinessInput.value === '' ? 0 : parseInt(happinessInput.value);
 
             if (!name) {
                 alert('Please enter a player name');
@@ -1007,7 +975,7 @@
             
             nameInput.value = '';
             moneyInput.value = '';
-            happinessInput.value = '1';
+            happinessInput.value = '0';
             
             showNotification(`✨ Player "${name}" added!`, 2000);
         }
@@ -1015,23 +983,6 @@
         // Generate unique ID
         function generateId() {
             return Date.now().toString(36) + Math.random().toString(36).substr(2);
-        }
-
-        // Select deposit period
-        function selectDepositPeriod(playerIndex, period) {
-            const weekBtn = document.getElementById(`week-btn-${playerIndex}`);
-            const monthBtn = document.getElementById(`month-btn-${playerIndex}`);
-            const periodInput = document.getElementById(`deposit-period-${playerIndex}`);
-            
-            if (period === '1week') {
-                weekBtn.classList.add('selected');
-                monthBtn.classList.remove('selected');
-                periodInput.value = '1week';
-            } else {
-                monthBtn.classList.add('selected');
-                weekBtn.classList.remove('selected');
-                periodInput.value = '1month';
-            }
         }
 
         // Add money transaction
@@ -1089,9 +1040,7 @@
         // Create time deposit
         function createTimeDeposit(playerIndex) {
             const amountInput = document.getElementById(`deposit-amount-${playerIndex}`);
-            const periodInput = document.getElementById(`deposit-period-${playerIndex}`);
             const amount = parseFloat(amountInput.value);
-            const period = periodInput.value;
 
             if (!amount || amount <= 0) {
                 alert('Please enter a valid positive amount');
@@ -1114,13 +1063,11 @@
             // STEP 1: Record the time deposit
             player.activeDeposit = {
                 amount: amount,
-                period: period,
                 claimed: false,
                 createdAt: new Date().toISOString()
             };
 
             // STEP 2: Add a withdrawal transaction to move money from cash to locked
-            // This decreases cash but net worth stays the same
             player.transactions.push({
                 type: 'money_withdrawal',
                 amount: amount,
@@ -1131,7 +1078,6 @@
             player.transactions.push({
                 type: 'time_deposit',
                 amount: amount,
-                period: period,
                 timestamp: new Date().toISOString()
             });
 
@@ -1139,9 +1085,7 @@
             renderPlayers();
             amountInput.value = '';
             
-            const periodName = period === '1week' ? '1 week' : '1 month';
-            const rate = period === '1week' ? '0.5%' : '2.5%';
-            showNotification(`🔒 Locked $${amount.toFixed(2)} for ${periodName} at ${rate}`, 2000);
+            showNotification(`🔒 Locked $${amount.toFixed(2)} for 1 Month at 2.5%`, 2000);
         }
 
         // Claim time deposit
@@ -1154,10 +1098,10 @@
             }
 
             const deposit = player.activeDeposit;
-            const interestAmount = calculateInterest(deposit.amount, deposit.period);
+            const interestAmount = calculateInterest(deposit.amount);
             const totalAmount = deposit.amount + interestAmount;
 
-            // STEP 1: Add money back with interest (deposit) - increases cash AND net worth (by interest amount)
+            // STEP 1: Add money back with interest (deposit)
             player.transactions.push({
                 type: 'money_deposit',
                 amount: totalAmount,
