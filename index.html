@@ -253,29 +253,13 @@
 
         .cash-info {
             margin: 8px 0;
-        }
-
-        .cash-amount {
-            font-size: 1.3em;
-            font-weight: bold;
+            font-size: 1.1em;
             color: #2c3e50;
-        }
-
-        .cash-label {
-            font-size: 0.7em;
-            color: #7f8c8d;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-left: 5px;
         }
 
         .locked-info {
             margin-top: 8px;
-            font-size: 0.9em;
-        }
-
-        .locked-amount {
-            font-weight: bold;
+            font-size: 1em;
             color: #9f7aea;
         }
 
@@ -588,7 +572,7 @@
         let players = JSON.parse(localStorage.getItem('players-happiness-tracker')) || [];
         let winnerNotified = JSON.parse(localStorage.getItem('winner-notified')) || {};
 
-        // Interest rate for 1 month only
+        // Interest rate for 1 month only - 3%
         const interestRate = 0.03; // 3% for 1 month
 
         // Save data to localStorage
@@ -667,7 +651,7 @@
             return total;
         }
 
-        // Calculate interest amount
+        // Calculate interest amount (3%)
         function calculateInterest(amount) {
             return Math.round(amount * interestRate * 100) / 100;
         }
@@ -848,7 +832,7 @@
                 
                 timeDepositHtml = `
                     <div class="time-deposit-section">
-                        <div class="time-deposit-title">⏰ Time Deposit (2.5%)</div>
+                        <div class="time-deposit-title">⏰ Time Deposit (3%)</div>
                         <div class="active-deposit">
                             <div class="deposit-details">
                                 <span class="deposit-amount">🔒 $${player.activeDeposit.amount.toFixed(2)} Locked</span>
@@ -867,7 +851,7 @@
             } else {
                 timeDepositHtml = `
                     <div class="time-deposit-section">
-                        <div class="time-deposit-title">⏰ Start Time Deposit (2.5%)</div>
+                        <div class="time-deposit-title">⏰ Start Time Deposit (3%)</div>
                         <div class="deposit-inputs">
                             <input type="number" id="deposit-amount-${index}" placeholder="Enter amount" step="0.01" min="1">
                         </div>
@@ -895,11 +879,8 @@
                         <div class="net-worth-label">💰 Net Worth:</div>
                         <div class="net-worth-amount">$${netWorth.toFixed(2)}</div>
                         <div class="separator"></div>
-                        <div class="cash-info">
-                            <span class="cash-amount">$${cash.toFixed(2)}</span>
-                            <span class="cash-label">cash</span>
-                        </div>
-                        <div class="locked-info">🔒 Locked: <span class="locked-amount">$${lockedMoney.toFixed(2)}</span></div>
+                        <div class="cash-info">Cash: $${cash.toFixed(2)}</div>
+                        <div class="locked-info">Locked: $${lockedMoney.toFixed(2)}</div>
                     </div>
                     <div class="happiness-display">
                         <div class="current-happiness">${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</div>
@@ -1085,7 +1066,7 @@
             renderPlayers();
             amountInput.value = '';
             
-            showNotification(`🔒 Locked $${amount.toFixed(2)} for 1 Month at 2.5%`, 2000);
+            showNotification(`🔒 Locked $${amount.toFixed(2)} for 1 Month at 3%`, 2000);
         }
 
         // Claim time deposit
