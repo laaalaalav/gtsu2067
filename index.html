@@ -36,7 +36,7 @@
             background: white;
             padding: 20px;
             border-radius: 10px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
@@ -67,6 +67,49 @@
 
         .input-group input[type="number"] {
             max-width: 150px;
+        }
+
+        .global-actions-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .global-actions-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .global-input-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .global-input-group input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 16px;
+            min-width: 150px;
+        }
+
+        .global-input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .global-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .global-buttons button {
+            padding: 12px 24px;
         }
 
         button {
@@ -342,14 +385,6 @@
             flex: 1;
         }
 
-        .interest-rate {
-            background: #48bb78;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 20px;
-            font-size: 0.9em;
-        }
-
         .deposit-inputs {
             display: flex;
             gap: 10px;
@@ -514,20 +549,6 @@
             opacity: 0.9;
         }
 
-        .notification-toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 50px;
-            font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            z-index: 1000;
-            border: 2px solid white;
-        }
-
         .reset-btn {
             background: #f56565;
             margin-top: 20px;
@@ -543,8 +564,6 @@
     <div class="container">
         <h1>🧋 BOBA BANK</h1>
 
-        <div id="notificationArea"></div>
-
         <div class="add-player-section">
             <h2>Add New Player</h2>
             <div class="input-group">
@@ -552,6 +571,17 @@
                 <input type="number" id="initialMoney" placeholder="Initial money" step="0.01">
                 <input type="number" id="initialHappiness" placeholder="Initial 😆" value="0" step="1">
                 <button onclick="addPlayer()">Add Player</button>
+            </div>
+        </div>
+
+        <div class="global-actions-section">
+            <h2>All Players</h2>
+            <div class="global-input-group">
+                <input type="number" id="globalAmount" placeholder="Enter amount" step="0.01" min="0">
+                <div class="global-buttons">
+                    <button onclick="addToAllPlayers()" style="background: #48bb78;">💰 +</button>
+                    <button onclick="takeFromAllPlayers()" style="background: #fc8181;">💰 -</button>
+                </div>
             </div>
         </div>
 
@@ -579,19 +609,6 @@
         function saveToStorage() {
             localStorage.setItem('players-happiness-tracker', JSON.stringify(players));
             localStorage.setItem('winner-notified', JSON.stringify(winnerNotified));
-        }
-
-        // Show notification toast
-        function showNotification(message, duration = 3000) {
-            const notificationArea = document.getElementById('notificationArea');
-            const toast = document.createElement('div');
-            toast.className = 'notification-toast';
-            toast.textContent = message;
-            notificationArea.appendChild(toast);
-
-            setTimeout(() => {
-                toast.remove();
-            }, duration);
         }
 
         // Calculate net worth (cash + locked deposits)
@@ -718,8 +735,6 @@
                     winnerDiv.style.display = 'block';
                     winnerMessage.innerHTML = `${player.name} has reached $100k with ${currentHappiness} 😆!`;
                     
-                    showNotification(`🎉 ${player.name} WON! $100k + 3 😆`, 4000);
-                    
                     return true;
                 }
             }
@@ -733,6 +748,66 @@
                     break;
                 }
             }
+        }
+
+        // Add money to all players
+        function addToAllPlayers() {
+            const amountInput = document.getElementById('globalAmount');
+            const amount = parseFloat(amountInput.value);
+
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid positive amount');
+                return;
+            }
+
+            players.forEach((player, index) => {
+                players[index].transactions.push({
+                    type: 'money_deposit',
+                    amount: amount,
+                    timestamp: new Date().toISOString()
+                });
+            });
+
+            saveToStorage();
+            renderPlayers();
+            amountInput.value = '';
+        }
+
+        // Take money from all players
+        function takeFromAllPlayers() {
+            const amountInput = document.getElementById('globalAmount');
+            const amount = parseFloat(amountInput.value);
+
+            if (!amount || amount <= 0) {
+                alert('Please enter a valid positive amount');
+                return;
+            }
+
+            let hasInsufficient = false;
+            players.forEach(player => {
+                const cash = calculateCash(player);
+                if (cash - amount < 0) {
+                    hasInsufficient = true;
+                }
+            });
+
+            if (hasInsufficient) {
+                if (!confirm('Warning: Some players may have insufficient cash. Continue anyway?')) {
+                    return;
+                }
+            }
+
+            players.forEach((player, index) => {
+                players[index].transactions.push({
+                    type: 'money_withdrawal',
+                    amount: amount,
+                    timestamp: new Date().toISOString()
+                });
+            });
+
+            saveToStorage();
+            renderPlayers();
+            amountInput.value = '';
         }
 
         // Render all players
@@ -894,8 +969,8 @@
                     <input type="number" id="money-amount-${index}" placeholder="Enter amount" step="0.01" min="0">
                 </div>
                 <div class="money-buttons">
-                    <button class="money-btn" onclick="addMoneyTransaction(${index}, 'deposit')">💰 Add Money</button>
-                    <button class="money-btn" onclick="addMoneyTransaction(${index}, 'withdrawal')">💰 Take Money</button>
+                    <button class="money-btn" onclick="addMoneyTransaction(${index}, 'deposit')">💰 +</button>
+                    <button class="money-btn" onclick="addMoneyTransaction(${index}, 'withdrawal')">💰 -</button>
                 </div>
 
                 <div class="happiness-buttons">
@@ -957,8 +1032,6 @@
             nameInput.value = '';
             moneyInput.value = '';
             happinessInput.value = '0';
-            
-            showNotification(`✨ Player "${name}" added!`, 2000);
         }
 
         // Generate unique ID
@@ -1065,8 +1138,6 @@
             saveToStorage();
             renderPlayers();
             amountInput.value = '';
-            
-            showNotification(`🔒 Locked $${amount.toFixed(2)} for 1 Month at 3%`, 2000);
         }
 
         // Claim time deposit
@@ -1102,8 +1173,6 @@
 
             saveToStorage();
             renderPlayers();
-            
-            showNotification(`✨ Claimed $${totalAmount.toFixed(2)} ($${interestAmount.toFixed(2)} interest)!`, 3000);
         }
 
         // Delete player
@@ -1113,7 +1182,6 @@
                 players.splice(index, 1);
                 saveToStorage();
                 renderPlayers();
-                showNotification(`👋 Player "${playerName}" removed`, 2000);
             }
         }
 
@@ -1124,7 +1192,6 @@
                 players[index].activeDeposit = null;
                 saveToStorage();
                 renderPlayers();
-                showNotification(`🧹 All transactions cleared`, 2000);
             }
         }
 
@@ -1136,7 +1203,6 @@
                 saveToStorage();
                 renderPlayers();
                 document.getElementById('winnerAnnouncement').style.display = 'none';
-                showNotification('🔄 All data has been reset', 2000);
             }
         }
 
