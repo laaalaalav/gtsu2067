@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BOBA BANK</title>
+    <title>BOBA BANK - Happiness Tracker</title>
     <style>
         * {
             margin: 0;
@@ -596,10 +596,8 @@
 
         // Calculate net worth (cash + locked deposits)
         function calculateCorrectNetWorth(player) {
-            // Cash is from transactions
             let cash = player.initialMoney;
             
-            // Add all deposits, subtract all withdrawals
             player.transactions.forEach(t => {
                 if (t.type === 'money_deposit') {
                     cash += t.amount;
@@ -608,7 +606,6 @@
                 }
             });
             
-            // Add locked money
             const locked = player.activeDeposit && !player.activeDeposit.claimed ? player.activeDeposit.amount : 0;
             
             return Math.round((cash + locked) * 100) / 100;
@@ -618,7 +615,6 @@
         function calculateCash(player) {
             let cash = player.initialMoney;
             
-            // Add all deposits, subtract all withdrawals
             player.transactions.forEach(t => {
                 if (t.type === 'money_deposit') {
                     cash += t.amount;
@@ -638,7 +634,7 @@
             return 0;
         }
 
-        // Calculate current happiness for a player
+        // Calculate current happiness for a player - ALLOWS NEGATIVE VALUES
         function calculateCurrentHappiness(player) {
             let total = player.initialHappiness;
             player.transactions.forEach(t => {
@@ -697,7 +693,7 @@
                     <div class="champion-name">${escapeHtml(champion.name)}</div>
                     <div class="champion-stats">
                         <span>💰 $${netWorth.toFixed(2)}</span>
-                        <span>😆 ${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</span>
+                        <span>😆 ${'😆'.repeat(Math.min(Math.max(currentHappiness, 0), 5))} ${currentHappiness}</span>
                     </div>
                 </div>
             `;
@@ -763,12 +759,10 @@
             const card = document.createElement('div');
             card.className = 'player-card';
             
-            // Add leader class if this player is the champion
             if (champion && champion.id === player.id) {
                 card.classList.add('leader');
             }
 
-            // Add deposit class if player has active deposit
             if (player.activeDeposit && !player.activeDeposit.claimed) {
                 card.classList.add('has-deposit');
             }
@@ -777,11 +771,8 @@
             const netWorth = calculateCorrectNetWorth(player);
             const lockedMoney = calculateLockedMoney(player);
             const currentHappiness = calculateCurrentHappiness(player);
-
-            // Check if this player is a winner
             const isWinner = netWorth >= 100000 && currentHappiness >= 3;
             
-            // Build transactions HTML
             let transactionsHtml = '';
             player.transactions.slice(-5).reverse().forEach(t => {
                 const date = new Date(t.timestamp).toLocaleString();
@@ -824,7 +815,6 @@
                 `;
             });
 
-            // Build time deposit section
             let timeDepositHtml = '';
             
             if (player.activeDeposit && !player.activeDeposit.claimed) {
@@ -860,11 +850,9 @@
                 `;
             }
 
-            // Add leader badge if this player is the champion
             const leaderBadge = (champion && champion.id === player.id) ? 
                 '<div class="leader-badge">🏆 TOP PLAYER 🏆</div>' : '';
 
-            // Add deposit badge if player has active deposit
             const depositBadge = (player.activeDeposit && !player.activeDeposit.claimed) ? 
                 '<div class="deposit-badge">⏰ LOCKED</div>' : '';
 
@@ -883,7 +871,7 @@
                         <div class="locked-info">Locked: $${lockedMoney.toFixed(2)}</div>
                     </div>
                     <div class="happiness-display">
-                        <div class="current-happiness">${'😆'.repeat(Math.min(currentHappiness, 5))} ${currentHappiness}</div>
+                        <div class="current-happiness">${'😆'.repeat(Math.min(Math.max(currentHappiness, 0), 5))} ${currentHappiness}</div>
                         <div class="initial-value">Initial: ${player.initialHappiness} 😆</div>
                     </div>
                 </div>
@@ -916,7 +904,6 @@
             return card;
         }
 
-        // Helper function to escape HTML
         function escapeHtml(unsafe) {
             return unsafe
                 .replace(/&/g, "&amp;")
@@ -926,7 +913,6 @@
                 .replace(/'/g, "&#039;");
         }
 
-        // Add new player
         function addPlayer() {
             const nameInput = document.getElementById('playerName');
             const moneyInput = document.getElementById('initialMoney');
@@ -961,12 +947,10 @@
             showNotification(`✨ Player "${name}" added!`, 2000);
         }
 
-        // Generate unique ID
         function generateId() {
             return Date.now().toString(36) + Math.random().toString(36).substr(2);
         }
 
-        // Add money transaction
         function addMoneyTransaction(playerIndex, type) {
             const amountInput = document.getElementById(`money-amount-${playerIndex}`);
             const amount = parseFloat(amountInput.value);
@@ -979,14 +963,12 @@
             const player = players[playerIndex];
             const cash = calculateCash(player);
 
-            // Check if withdrawal would make cash negative
             if (type === 'withdrawal' && cash - amount < 0) {
                 if (!confirm('Warning: This withdrawal would make cash negative. Continue anyway?')) {
                     return;
                 }
             }
 
-            // Add transaction - this affects net worth
             players[playerIndex].transactions.push({
                 type: `money_${type}`,
                 amount: amount,
@@ -998,17 +980,12 @@
             amountInput.value = '';
         }
 
-        // Add happiness change
+        // FIXED: Happiness adjustment - NO data deletion, allows negative values
         function addHappiness(playerIndex, change) {
             const player = players[playerIndex];
-            const currentHappiness = calculateCurrentHappiness(player);
             
-            if (change === 'minus' && currentHappiness - 1 < 0) {
-                if (!confirm('Warning: This would make happiness negative. Continue anyway?')) {
-                    return;
-                }
-            }
-
+            // Simply add the transaction without any negative checks
+            // This allows happiness to go negative as requested
             players[playerIndex].transactions.push({
                 type: `happiness_${change}`,
                 timestamp: new Date().toISOString()
@@ -1016,9 +993,11 @@
 
             saveToStorage();
             renderPlayers();
+            
+            const currentHappiness = calculateCurrentHappiness(players[playerIndex]);
+            showNotification(`${player.name}: ${change === 'plus' ? '😆 +1' : '😆 -1'} (Now: ${currentHappiness})`, 1500);
         }
 
-        // Create time deposit
         function createTimeDeposit(playerIndex) {
             const amountInput = document.getElementById(`deposit-amount-${playerIndex}`);
             const amount = parseFloat(amountInput.value);
@@ -1041,21 +1020,18 @@
                 return;
             }
 
-            // STEP 1: Record the time deposit
             player.activeDeposit = {
                 amount: amount,
                 claimed: false,
                 createdAt: new Date().toISOString()
             };
 
-            // STEP 2: Add a withdrawal transaction to move money from cash to locked
             player.transactions.push({
                 type: 'money_withdrawal',
                 amount: amount,
                 timestamp: new Date().toISOString()
             });
 
-            // STEP 3: Add a record of the time deposit
             player.transactions.push({
                 type: 'time_deposit',
                 amount: amount,
@@ -1069,7 +1045,6 @@
             showNotification(`🔒 Locked $${amount.toFixed(2)} for 1 Month at 3%`, 2000);
         }
 
-        // Claim time deposit
         function claimTimeDeposit(playerIndex) {
             const player = players[playerIndex];
             
@@ -1082,21 +1057,18 @@
             const interestAmount = calculateInterest(deposit.amount);
             const totalAmount = deposit.amount + interestAmount;
 
-            // STEP 1: Add money back with interest (deposit)
             player.transactions.push({
                 type: 'money_deposit',
                 amount: totalAmount,
                 timestamp: new Date().toISOString()
             });
 
-            // STEP 2: Add interest transaction record
             player.transactions.push({
                 type: 'interest_earned',
                 amount: interestAmount,
                 timestamp: new Date().toISOString()
             });
 
-            // STEP 3: Mark as claimed and clear deposit
             player.activeDeposit.claimed = true;
             player.activeDeposit = null;
 
@@ -1106,7 +1078,6 @@
             showNotification(`✨ Claimed $${totalAmount.toFixed(2)} ($${interestAmount.toFixed(2)} interest)!`, 3000);
         }
 
-        // Delete player
         function deletePlayer(index) {
             const playerName = players[index].name;
             if (confirm(`Are you sure you want to delete ${playerName}?`)) {
@@ -1117,7 +1088,6 @@
             }
         }
 
-        // Clear all transactions for a player
         function clearTransactions(index) {
             if (confirm('Are you sure you want to clear all transactions for this player?')) {
                 players[index].transactions = [];
@@ -1128,7 +1098,6 @@
             }
         }
 
-        // Reset all data
         function resetAllData() {
             if (confirm('Are you sure you want to reset ALL data? This cannot be undone!')) {
                 players = [];
@@ -1140,7 +1109,6 @@
             }
         }
 
-        // Initialize the page
         renderPlayers();
     </script>
 </body>
